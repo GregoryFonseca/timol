@@ -64,15 +64,22 @@ class MoleculesInterface(Widget):
     radii_scale: reactive[float] = reactive(1)
 
     BINDINGS = [
-        Binding("a,left", "change_index(-1)", "Next frame (index)"),
-        Binding("d,right", "change_index(1)", "Previous frame (index)"),
-        Binding("w,up", "zoom(1)", "Zoom inwards"),
-        Binding("s,down", "zoom(-1)", "Zoom outwards"),
+        Binding("h", "toggle_hotkey_menu", "Toggle help menu"),
+        Binding("a", "rotate_camera(-45,0)", "Rotate left"),
+        Binding("d", "rotate_camera(45,0)", "Rotate right"),
+        Binding("w", "rotate_camera(0,45)", "Pivot forwards"),
+        Binding("s", "rotate_camera(0,-45)", "Pivot backwards"),
+        Binding("q,left", "change_index(-1)", "Next frame (index)"),
+        Binding("e,right", "change_index(1)", "Previous frame (index)"),
+        Binding("Q,up", "set_index(-1)", "Last frame (index = -1)"),
+        Binding("E,down", "set_index(0)", "First frame (index = 0)"),
+        Binding("W", "zoom(1)", "Zoom inwards"),
+        Binding("S", "zoom(-1)", "Zoom outwards"),
         Binding("r", "reset_view()", "Reset camera rotation, zoom and offset"),
         Binding("R", "radiii_scale_prompt", "Change the scale of the atomic radii"),
         Binding("c", "toggle_centering()", "Center camera"),
         Binding("i", "index_prompt", "Go to specific frame (index)"),
-        Binding("h", "toggle_hotkey_menu", "Toggle help menu"),
+        Binding("x", "toggle_sidebar", "Toggle sidebar visibility"),
     ]
 
     def __init__(self, mols_reader: MoleculesReader, radii_scale: float = 1):
@@ -103,7 +110,9 @@ class MoleculesInterface(Widget):
         if index is None:
             return
         index = int(index)
-        if index < 0 or index >= n_mols or index == self.index:
+        if index < 0:
+            self.set_index(index % n_mols)
+        if index >= n_mols or index == self.index:
             return
 
         self.index = index
@@ -118,6 +127,9 @@ class MoleculesInterface(Widget):
 
     def action_change_index(self, by: int):
         self.set_index(self.index + by)
+
+    def action_set_index(self, index: int):
+        self.set_index(index)
 
     def action_reset_view(self):
         self.query_one(MolViewer).reset_view()
@@ -155,6 +167,17 @@ class MoleculesInterface(Widget):
             self.app.action_hide_help_panel()
         else:
             self.app.action_show_help_panel()
+
+    def action_rotate_camera(self, yaw: float, pitch: float):
+        self.query_one(MolViewer).rotate_camera(yaw, pitch)
+
+    def action_toggle_sidebar(self):
+        sidebar = self.query_one(Sidebar)
+        width = sidebar.styles.width
+        if width is None or width.value == 0:
+            sidebar.styles.width = 30
+        else:
+            sidebar.styles.width = 0
 
 
 class Timol(App[str]):

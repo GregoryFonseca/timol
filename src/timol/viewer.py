@@ -230,23 +230,26 @@ class MolViewer(Widget):
 
         return np.flip(matrix, axis=0)
 
+    def rotate_camera(self, yaw: float = 0, pitch: float = 0):
+        self.yaw += yaw
+        self.pitch += pitch
+        self.refresh()
+
+    def shift_offset(self, x: float = 0, y: float = 0):
+        self.offset[0] += x
+        self.offset[1] += y
+        self.refresh()
+
     def on_mouse_move(self, event: events.MouseMove) -> None:
         if event.button == 1:
             if event.shift:
-                self.offset[0] -= 0.1 * event.delta_x
-                self.offset[1] += 0.1 * event.delta_y
+                self.shift_offset(-0.1 * event.delta_x, 0.1 * event.delta_y)
 
             else:
-                self.yaw -= 5 * event.delta_x
-                self.pitch += 5 * event.delta_y
+                self.rotate_camera(-5 * event.delta_x, 5 * event.delta_y)
 
         elif event.button == 2:
             return
-
-        else:
-            return
-
-        self.refresh()
 
     def on_mouse_scroll_down(self, event: events.MouseScrollDown) -> None:
         self.zoom_by(-1)
