@@ -5,7 +5,7 @@ Timol is a molecular visualiser inside of the terminal. It relies on [ASE](https
 
 ## Installation
 
-tbd
+Timol is installable via pip (see [PyPI page](https://pypi.org/project/timol/0.1.3/)) using `pip install timol`. The minimum python version is 3.12. 
 
 ## Usage
 
