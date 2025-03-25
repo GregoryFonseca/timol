@@ -12,8 +12,9 @@ from timol.ui import InfoLabel, SimpleMarkdown, Spacer
 HELPING_MESSAGE_MARKDOWN = """
 ## Cheat sheet
 - Drag: rotate
-- Shift-drag: pan
+- Shift/alt-drag: pan
 - h: Hotkey menu
+- Ctrl-Q/C: quit
 """
 
 

@@ -5,13 +5,15 @@ Timol is a molecular visualiser inside of the terminal. It relies on [ASE](https
 
 ## Installation
 
-Timol is installable via pip (see [PyPI page](https://pypi.org/project/timol/0.1.3/)) using `pip install timol`. The minimum python version is 3.12. 
+Timol is installable via pip (see [PyPI page](https://pypi.org/project/timol)) using `pip install timol`. The minimum python version is 3.9. 
 
 ## Usage
 
-In order to visualise a file of interest, simply call `timol <file_path>`. An optional argument (`-i`) can be provided to index the file in case only specific frames are of interest (note that this can also be done from within the app using the `g` hotkey). 
+In order to visualise a file of interest, simply call `timol <file_path>`. An optional argument (`-i`) can be provided to index the file in case only specific frames are of interest (note that this can also be done from within the app using the `g` hotkey). This is particularly recommended for large (xyz) files to prevent excessive loading times.
 
-In order to test the app without a molecular file at hand, use `timol test`.
+In order to test the app without a molecular file at hand, use `timol test`. 
+
+Note that the first time timol is launched, longer loading times are expected to initialise the package. 
 
 ## Functionalities
 

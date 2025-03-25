@@ -65,21 +65,27 @@ class MoleculesInterface(Widget):
 
     BINDINGS = [
         Binding("h", "toggle_hotkey_menu", "Toggle help menu"),
-        Binding("a", "rotate_camera(-45,0)", "Rotate left"),
-        Binding("d", "rotate_camera(45,0)", "Rotate right"),
-        Binding("w", "rotate_camera(0,45)", "Pivot forwards"),
-        Binding("s", "rotate_camera(0,-45)", "Pivot backwards"),
-        Binding("q,left", "change_index(-1)", "Next frame (index)"),
-        Binding("e,right", "change_index(1)", "Previous frame (index)"),
-        Binding("Q,up", "set_index(-1)", "Last frame (index = -1)"),
-        Binding("E,down", "set_index(0)", "First frame (index = 0)"),
-        Binding("W", "zoom(1)", "Zoom inwards"),
-        Binding("S", "zoom(-1)", "Zoom outwards"),
+        Binding("a", "rotate_camera(-45,0,0)", "Rotate left"),
+        Binding("d", "rotate_camera(45,0,0)", "Rotate right"),
+        Binding("s", "rotate_camera(0,-45,0)", "Tilt backwards"),
+        Binding("w", "rotate_camera(0,45,0)", "Tilt forwards"),
+        Binding("z", "rotate_camera(0,0,45)", "Spin left"),
+        Binding("x", "rotate_camera(0,0,-45)", "Spin right"),
+        Binding("A", "pan_camera(1,0)", "Pan left"),
+        Binding("D", "pan_camera(-1,0)", "Pan right"),
+        Binding("S", "pan_camera(0, 1)", "Pan backwards"),
+        Binding("W", "pan_camera(0,-1)", "Pan forwards"),
+        Binding("left, Q", "change_index(-1)", "Next frame (index)"),
+        Binding("right, E", "change_index(1)", "Previous frame (index)"),
+        Binding("up", "set_index(-1)", "Last frame (index = -1)"),
+        Binding("down", "set_index(0)", "First frame (index = 0)"),
+        Binding("e", "zoom(1)", "Zoom inwards"),
+        Binding("q", "zoom(-1)", "Zoom outwards"),
         Binding("r", "reset_view()", "Reset camera rotation, zoom and offset"),
         Binding("R", "radiii_scale_prompt", "Change the scale of the atomic radii"),
         Binding("c", "toggle_centering()", "Center camera"),
         Binding("i", "index_prompt", "Go to specific frame (index)"),
-        Binding("x", "toggle_sidebar", "Toggle sidebar visibility"),
+        Binding("b", "toggle_sidebar", "Toggle sidebar visibility"),
     ]
 
     def __init__(self, mols_reader: MoleculesReader, radii_scale: float = 1):
@@ -126,6 +132,11 @@ class MoleculesInterface(Widget):
         self.radii_scale = scale
 
     def action_change_index(self, by: int):
+        index = self.index + by
+        if index < 0:
+            return
+        if index >= self.mols_reader.get_n_molecules():
+            return
         self.set_index(self.index + by)
 
     def action_set_index(self, index: int):
@@ -168,8 +179,13 @@ class MoleculesInterface(Widget):
         else:
             self.app.action_show_help_panel()
 
-    def action_rotate_camera(self, yaw: float, pitch: float):
-        self.query_one(MolViewer).rotate_camera(yaw, pitch)
+    def action_rotate_camera(
+        self, x_rotation: float, y_rotation: float, z_rotation: float
+    ):
+        self.query_one(MolViewer).rotate_camera(x_rotation, y_rotation, z_rotation)
+
+    def action_pan_camera(self, x: float, y: float):
+        self.query_one(MolViewer).shift_offset(x, y)
 
     def action_toggle_sidebar(self):
         sidebar = self.query_one(Sidebar)

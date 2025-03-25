@@ -147,8 +147,9 @@ class MolViewer(Widget):
     coordinates: NDArray
     sizes: NDArray
     colors: NDArray
-    yaw: float = 0
-    pitch: float = 0
+    x_rotation: float = 0
+    y_rotation: float = 0
+    z_rotation: float = 0
     scale: float = 10
     offset: NDArray = np.zeros(2)
     background_color: RichColor
@@ -176,8 +177,8 @@ class MolViewer(Widget):
         self.background_color = RichColor.from_rgb(*background_color)
 
     def reset_view(self):
-        self.pitch = 0
-        self.yaw = 0
+        self.y_rotation = 0
+        self.x_rotation = 0
         self.scale = 10
         self.offset[:] = 0
         self.radii_scale = 1
@@ -230,9 +231,12 @@ class MolViewer(Widget):
 
         return np.flip(matrix, axis=0)
 
-    def rotate_camera(self, yaw: float = 0, pitch: float = 0):
-        self.yaw += yaw
-        self.pitch += pitch
+    def rotate_camera(
+        self, x_rotation: float = 0, y_rotation: float = 0, z_rotation: float = 0
+    ):
+        self.x_rotation += x_rotation
+        self.y_rotation += y_rotation
+        self.z_rotation += z_rotation
         self.refresh()
 
     def shift_offset(self, x: float = 0, y: float = 0):
@@ -242,7 +246,7 @@ class MolViewer(Widget):
 
     def on_mouse_move(self, event: events.MouseMove) -> None:
         if event.button == 1:
-            if event.shift:
+            if event.shift or event.meta:
                 self.shift_offset(-0.1 * event.delta_x, 0.1 * event.delta_y)
 
             else:
@@ -272,7 +276,16 @@ class MolViewer(Widget):
         :rtype: tuple[NDArray, NDArray, NDArray]
         """
 
-        rot = Rotation.from_euler("zyx", [self.yaw, self.pitch, 0], degrees=True)
+        # note, I am defining "xyz" as referring to the image one sees:
+        # x rotation: rotation around the horizontal axis
+        # y rotation: rotation around the vertical axis
+        # z rotation: rotation into/out of the screen
+        # Those are not the same as the euler x/y/z definition
+        rot = Rotation.from_euler(
+            "zyx",
+            [self.x_rotation, self.y_rotation, self.z_rotation],
+            degrees=True,
+        )
         R = self.mols_reader.get_positions(self.index)
         if self.centering:
             R -= self.get_system_center()
