@@ -19,10 +19,11 @@ Note that the first time timol is launched, longer loading times are expected to
 
 Timol provides a set of tools to conveniently manipulate the camera and more:
 - **Help**: Press `h` to view available hotkeys from within the app
-- **Rotate**: Drag the mouse or press `a/d` and `w/s`
-- **Pan**: Hold shift and drag the mouse or press `shift+a/d`
-- **Zoom**: Scroll or press `shift+w/s`
-- **Change index/frame**: Press `q/e` (or `shift+q/e`) to go to the previous/next (or first/last) frame, press `g` to manually input the index
+- **Rotate/tilt**: Drag the mouse or press `a/d` and `w/s`
+- **Spin**: Press `z/x`
+- **Pan**: Hold shift/alt and drag the mouse or press `shift+a/d`
+- **Zoom**: Scroll or press `q/e`
+- **Change index/frame**: Press `sift+q/e` or `left/right` (`up/down`) to go to the previous/next (or first/last) frame, press `g` to manually input the index
 
 ## MacOS Disclaimer
 
