@@ -44,6 +44,9 @@ class Sidebar(Widget, can_focus=True):
             yield SimpleMarkdown("## Info")
             yield InfoLabel("Centering").data_bind(value=Sidebar.centering)
 
+            # yield Label("")  # spacer
+            # yield SimpleMarkdown("## Dynamic")
+
             yield Spacer()
             yield SimpleMarkdown(
                 HELPING_MESSAGE_MARKDOWN,

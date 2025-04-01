@@ -147,9 +147,7 @@ class MolViewer(Widget):
     coordinates: NDArray
     sizes: NDArray
     colors: NDArray
-    x_rotation: float = 0
-    y_rotation: float = 0
-    z_rotation: float = 0
+    current_rotation: Rotation
     scale: float = 10
     offset: NDArray = np.zeros(2)
     background_color: RichColor
@@ -171,14 +169,17 @@ class MolViewer(Widget):
         self.set_background_color(background_color)
         self.mols_reader = mols_reader
         self._centers_cache = {}
+        self.clear_rotation()
         super().__init__()
 
     def set_background_color(self, background_color: NDArray):
         self.background_color = RichColor.from_rgb(*background_color)
 
+    def clear_rotation(self):
+        self.current_rotation = Rotation.identity()
+
     def reset_view(self):
-        self.y_rotation = 0
-        self.x_rotation = 0
+        self.clear_rotation()
         self.scale = 10
         self.offset[:] = 0
         self.radii_scale = 1
@@ -231,12 +232,9 @@ class MolViewer(Widget):
 
         return np.flip(matrix, axis=0)
 
-    def rotate_camera(
-        self, x_rotation: float = 0, y_rotation: float = 0, z_rotation: float = 0
-    ):
-        self.x_rotation += x_rotation
-        self.y_rotation += y_rotation
-        self.z_rotation += z_rotation
+    def rotate_camera(self, x: float = 0, y: float = 0, z: float = 0):
+        r = Rotation.from_euler("zyx", [x, y, z], degrees=True)
+        self.current_rotation = r * self.current_rotation
         self.refresh()
 
     def shift_offset(self, x: float = 0, y: float = 0):
@@ -281,11 +279,7 @@ class MolViewer(Widget):
         # y rotation: rotation around the vertical axis
         # z rotation: rotation into/out of the screen
         # Those are not the same as the euler x/y/z definition
-        rot = Rotation.from_euler(
-            "zyx",
-            [self.x_rotation, self.y_rotation, self.z_rotation],
-            degrees=True,
-        )
+        rot = self.current_rotation
         R = self.mols_reader.get_positions(self.index)
         if self.centering:
             R -= self.get_system_center()

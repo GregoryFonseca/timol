@@ -9,7 +9,7 @@ Timol is installable via pip (see [PyPI page](https://pypi.org/project/timol)) u
 
 ## Usage
 
-In order to visualise a file of interest, simply call `timol <file_path>`. An optional argument (`-i`) can be provided to index the file in case only specific frames are of interest (note that this can also be done from within the app using the `g` hotkey). This is particularly recommended for large (xyz) files to prevent excessive loading times.
+In order to visualise a file of interest, simply call `timol <file_path>`. An optional argument (`-i`) can be provided to index the file in case only specific frames are of interest (note that this can also be done from within the app using the `i` hotkey). This is particularly recommended for large (xyz) files to prevent excessive loading times.
 
 In order to test the app without a molecular file at hand, use `timol test`. 
 
