@@ -15,12 +15,14 @@ HELPING_MESSAGE_MARKDOWN = """
 - Shift/alt-drag: pan
 - h: Hotkey menu
 - Ctrl-Q/C: quit
+- Ctrl-P: Command palette
 """
 
 
 class Sidebar(Widget, can_focus=True):
     index: reactive[int] = reactive(-1)
     centering: reactive[bool] = reactive(False)
+    mode: reactive[str] = reactive("spheres")
 
     chemical_formula: reactive[str] = reactive("")
     n_atoms: reactive[int] = reactive(0)
@@ -43,6 +45,7 @@ class Sidebar(Widget, can_focus=True):
             yield Label("")  # spacer
             yield SimpleMarkdown("## Info")
             yield InfoLabel("Centering").data_bind(value=Sidebar.centering)
+            yield InfoLabel("Mode").data_bind(value=Sidebar.mode)
 
             # yield Label("")  # spacer
             # yield SimpleMarkdown("## Dynamic")

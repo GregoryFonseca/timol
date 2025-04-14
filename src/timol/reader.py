@@ -1,8 +1,11 @@
+from functools import lru_cache
+
 import ase.io
 import numpy as np
 from ase import Atoms
 from ase.data import covalent_radii
 from ase.data.colors import jmol_colors as atom_colors
+from ase.neighborlist import NeighborList, natural_cutoffs
 from numpy.typing import NDArray
 
 
@@ -51,3 +54,17 @@ class MoleculesReader:
         r -= np.mean(r, axis=0)
 
         return r, radii, colors
+
+    @lru_cache
+    def get_center(self, index):
+        return np.mean(self.get_positions(index), axis=0)
+
+    @lru_cache
+    def get_bonds(self, index: int, mult: float = 0.7) -> NDArray:
+        atoms = self.molecules[index]
+
+        nl = NeighborList(natural_cutoffs(atoms, mult=mult), self_interaction=False)  # type: ignore
+        nl.nl.update(False, atoms.cell, atoms.get_positions(wrap=True))
+        cm = nl.get_connectivity_matrix(sparse=False)
+        neighbors = np.argwhere(cm != 0)
+        return neighbors

@@ -1,6 +1,6 @@
 [project]
 name = "timol"
-version = "1.1.1"
+version = "1.1.2"
 description = "3D Molecular viewer in the terminal"
 readme = "README.md"
 authors = [
@@ -12,6 +12,7 @@ dependencies = [
     "numpy>=2.0.2",
     "textual>=2.1.2",
     "ase>=3.24.0",
+    "scikit-image>=0.24.0"
 ]
 license = "MIT"
 license-files = ["LICENSE"]
