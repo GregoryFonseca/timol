@@ -12,6 +12,7 @@ wheels/
 !src/timol/test_xyz.xyz
 test.py
 test_*.py
+bmark.html
 
 # Virtual environments
 .venv

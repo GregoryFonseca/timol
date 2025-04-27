@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import Iterable, List, Optional, Union
 
 from textual.app import App, ComposeResult, SystemCommand
 from textual.binding import Binding
@@ -12,6 +12,7 @@ from textual.widgets import Header, Input
 
 from timol.reader import MoleculesReader
 from timol.sidebar import Sidebar
+from timol.utils import Benchmarker
 from timol.viewer import MolViewer
 
 
@@ -66,6 +67,7 @@ class MoleculesInterface(Widget):
     mode: reactive[str] = reactive("spheres")
 
     _modes: List[str] = ["spheres", "lines", "spheres&lines"]
+    bmarker: Optional[Benchmarker] = None
 
     BINDINGS = [
         Binding("h", "toggle_hotkey_menu", "Toggle help menu"),
@@ -75,8 +77,8 @@ class MoleculesInterface(Widget):
         Binding("w", "rotate_camera(0,45,0)", "Tilt forwards"),
         Binding("z", "rotate_camera(0,0,45)", "Spin left"),
         Binding("x", "rotate_camera(0,0,-45)", "Spin right"),
-        Binding("A", "pan_camera(1,0)", "Pan left"),
-        Binding("D", "pan_camera(-1,0)", "Pan right"),
+        Binding("A", "pan_camera(-1,0)", "Pan left"),
+        Binding("D", "pan_camera(1,0)", "Pan right"),
         Binding("S", "pan_camera(0, 1)", "Pan backwards"),
         Binding("W", "pan_camera(0,-1)", "Pan forwards"),
         Binding("m", "change_mode()", "Change mode"),
@@ -94,10 +96,16 @@ class MoleculesInterface(Widget):
         Binding("b", "toggle_sidebar", "Toggle sidebar visibility"),
     ]
 
-    def __init__(self, mols_reader: MoleculesReader, radii_scale: float = 1):
+    def __init__(
+        self,
+        mols_reader: MoleculesReader,
+        radii_scale: float = 1,
+        bmarker: Optional[Benchmarker] = None,
+    ):
         super().__init__()
         self.mols_reader = mols_reader
         self.radii_scale = radii_scale
+        self.bmarker = bmarker
         self.load_molecules()
 
     def compose(self) -> ComposeResult:
@@ -109,7 +117,7 @@ class MoleculesInterface(Widget):
                 .data_bind(mode=MoleculesInterface.mode)
             )
             yield (
-                MolViewer(mols_reader=self.mols_reader)
+                MolViewer(mols_reader=self.mols_reader, bmarker=self.bmarker)
                 .data_bind(index=MoleculesInterface.index)
                 .data_bind(centering=MoleculesInterface.centering)
                 .data_bind(radii_scale=MoleculesInterface.radii_scale)
@@ -236,9 +244,6 @@ class MoleculesInterface(Widget):
             sidebar.styles.width = 0
 
 
-from typing import Iterable
-
-
 class Timol(App[str]):
     CSS_PATH = "timol.tcss"
     TITLE = "TIMOL"
@@ -247,14 +252,23 @@ class Timol(App[str]):
         Binding("ctrl+q,ctrl+c", "quit", "Quit", priority=True),
     ]
 
-    def __init__(self, mols_reader: MoleculesReader, radii_scale: float = 1):
+    bmarker: Optional[Benchmarker] = None
+
+    def __init__(
+        self, mols_reader: MoleculesReader, radii_scale: float = 1, bmark: bool = False
+    ):
         self.mols_reader = mols_reader
         self.radii_scale = radii_scale
+        if bmark:
+            self.bmarker = Benchmarker()
+
         super().__init__()
 
     def compose(self) -> ComposeResult:
         yield Header()
-        yield MoleculesInterface(self.mols_reader, radii_scale=self.radii_scale)
+        yield MoleculesInterface(
+            self.mols_reader, radii_scale=self.radii_scale, bmarker=self.bmarker
+        )
 
     def interface_toggle_sidebar(self):
         self.query_one(MoleculesInterface).action_toggle_sidebar()

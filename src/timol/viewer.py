@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import skimage.draw
@@ -16,25 +16,32 @@ from textual.widget import Widget
 
 from timol.custom_typing import FloatType, IntType
 from timol.reader import MoleculesReader
+from timol.utils import Benchmarker
 
 jmol_colors[0] = (0, 0, 0)
 
 
 class HDRenderable:
+    bmarker: Optional[Benchmarker] = None
+
     def __init__(
         self,
         matrix: NDArray,
         colors: NDArray,
         background_color: RichColor = RichColor.from_rgb(0, 0, 0),
+        bmarker: Optional[Benchmarker] = None,
     ):
         self.background_color = background_color
         self.matrix = matrix
         self.colors = colors
         self.n_indices = len(colors)
+        self.bmarker = bmarker
 
     def __rich_console__(
         self, console: Console, options: ConsoleOptions
     ) -> RenderResult:
+        if self.bmarker is not None:
+            self.bmarker.start("renderable_console_init")
         new_line = Segment.line()
 
         colors = self.colors
@@ -59,8 +66,14 @@ class HDRenderable:
 
             return Style(color=top_color, bgcolor=bottom_color)
 
+        if self.bmarker is not None:
+            self.bmarker.stop("renderable_console_init")
+
         x, y = self.matrix.shape
         for i in range(0, x, 2):
+            if self.bmarker is not None:
+                self.bmarker.start("renderable_console_loop")
+
             n_same_style = 0
             last_style, style = None, None
             for j in range(y):
@@ -76,6 +89,9 @@ class HDRenderable:
             if (n_same_style > 0) and (style is not None):
                 yield Segment("▀" * n_same_style, style)
                 style = None
+
+            if self.bmarker is not None:
+                self.bmarker.stop("renderable_console_loop")
 
             yield new_line
 
@@ -98,6 +114,10 @@ class MolViewer(Widget):
     _draw_buffer: List[
         Tuple[FloatType, IntType, Union[NDArray, List], Union[NDArray, List]]
     ]
+    _headless: bool = False
+    _headless_size: Tuple[int, int]
+
+    bmarker: Optional[Benchmarker]
 
     DEFAULT_CSS = """
     MolViewer{
@@ -111,12 +131,34 @@ class MolViewer(Widget):
         self,
         mols_reader: MoleculesReader,
         background_color: NDArray = np.array((0, 0, 0)),
+        bmarker: Optional[Benchmarker] = None,
+        headless: bool = False,
+        headless_size: Tuple[int, int] = (100, 100),
+        headless_mode: str = "spheres",
+        headless_radii_scale: float = 1,
+        headless_zoom_scale: float = 10,
     ):
         self.set_background_color(background_color)
         self.mols_reader = mols_reader
         self.clear_rotation()
         self._draw_buffer = []
-        super().__init__()
+        self.bmarker = bmarker
+        if headless:
+            delattr(MolViewer, "index")
+            delattr(MolViewer, "mode")
+            delattr(MolViewer, "centering")
+            delattr(MolViewer, "radii_scale")
+            delattr(MolViewer, "bond_factor")
+            delattr(MolViewer, "scale")
+            self._headless = True
+            self._headless_size = headless_size
+            self.mode = headless_mode
+            self.centering = False
+            self.radii_scale = headless_radii_scale
+            self.bond_factor = 0.7
+            self.scale = headless_zoom_scale
+        else:
+            super().__init__()
 
     def set_background_color(self, background_color: NDArray):
         self.background_color = RichColor.from_rgb(*background_color)
@@ -128,8 +170,15 @@ class MolViewer(Widget):
         return self.mols_reader.get_center(self.index)
 
     def build_matrix(self) -> NDArray:
-        h, w = self.size.height * 2, self.size.width
+        h, w = self.get_size()
+
+        if self.bmarker is not None:
+            self.bmarker.start("build_matrix_init")
+
         self._matrix = -np.ones((h, w)).astype(int)
+
+        if self.bmarker is not None:
+            self.bmarker.stop("build_matrix_init")
 
         if self.mode == "spheres":
             self.buffer_draw_spheres()
@@ -144,7 +193,15 @@ class MolViewer(Widget):
         else:
             raise Exception(f"Mode {self.mode} not recognised in build_matrix")
 
-        return self.apply_draw_buffer()
+        if self.bmarker is not None:
+            self.bmarker.start("build_matrix_apply")
+
+        matrix = self.apply_draw_buffer()
+
+        if self.bmarker is not None:
+            self.bmarker.stop("build_matrix_apply")
+
+        return matrix
 
     def apply_draw_buffer(self):
         matrix = self._matrix
@@ -165,11 +222,11 @@ class MolViewer(Widget):
     def get_pixel_visibilities(
         self, x: NDArray[np.int64], y: NDArray[np.int64]
     ) -> NDArray[np.bool]:
-        w, h = self.size.width, self.size.height * 2
+        h, w = self.get_size()
         return (x >= 0) & (x <= w - 1) & (y >= 0) & (y <= h - 1)
 
     def is_pixel_visible(self, x: IntType, y: IntType) -> bool:
-        w, h = self.size.width, self.size.height * 2
+        h, w = self.get_size()
         return bool((x >= 0) & (x <= w - 1) & (y >= 0) & (y <= h - 1))
 
     def snap_to_grid(self, x: FloatType, y: FloatType) -> Tuple[IntType, IntType]:
@@ -185,38 +242,53 @@ class MolViewer(Widget):
         line = skimage.draw.line(x1, y1, x2, y2)
         return line
 
-    def buffer_draw_spheres(self) -> None:
-        R, sizes, distances = self.get_projection()
+    def get_circle(self, x: FloatType, y: FloatType, radius: FloatType):
+        circle = skimage.draw.disk((x, y), radius)
+        return circle
 
-        sizes = sizes * self.radii_scale
+    def buffer_draw_spheres(self) -> None:
+        if self.bmarker is not None:
+            self.bmarker.start("build_matrix_spheres")
+
+        R, sizes, distances = self.get_projection()
+        h, w = self.get_size()
+
+        sizes = sizes * self.radii_scale * self.get_pixel_size()
+        xs, ys = self.snap_to_grid(R[:, 0], R[:, 1])
+
+        assert isinstance(xs, np.ndarray)
+        assert isinstance(ys, np.ndarray)
+
+        ## Generate within-bound mask
+        mask = (
+            (xs + sizes < 0) | (xs - sizes > w) | (ys + sizes < 0) | (ys - sizes > h)
+        )  # out of bound
+        mask = ~(mask)
+
+        ## Apply mask
+        drawn_idx_to_original_idx = np.arange(len(xs))[mask]
+        xs = xs[mask]
+        ys = ys[mask]
+        distances = distances[mask]
+        sizes = sizes[mask]
 
         # everything gets converted to pixel space
         for idx, distance in enumerate(distances):
-            x, y = R[idx]
-            sphere_size = sizes[idx] * self.get_pixel_size()
+            x, y = xs[idx], ys[idx]
 
-            x_min = self.snap_to_x_grid(x - sphere_size)
-            x_max = self.snap_to_x_grid(x + sphere_size)
+            circle = self.get_circle(x, y, sizes[idx])
 
-            y_min = self.snap_to_y_grid(y - sphere_size)
-            y_max = self.snap_to_y_grid(y + sphere_size)
+            self.draw_buffer(
+                float(distance), drawn_idx_to_original_idx[idx], circle[0], circle[1]
+            )
 
-            # dumb and slow way to do it, could at least cache the mask somehow
-            # it's spherical after all...
-            # or do a np.where or smth, idk
-            # TODO
-            x_idxs, y_idxs = [], []
-            for xn in range(int(x_min), int(x_max)):
-                for yn in range(int(y_min), int(y_max)):
-                    if np.sqrt((xn + 0.5 - x) ** 2 + (yn + 0.5 - y) ** 2) > sphere_size:
-                        continue
-
-                    x_idxs.append(xn)
-                    y_idxs.append(yn)
-
-            self.draw_buffer(float(distance), idx, np.array(x_idxs), np.array(y_idxs))
+        if self.bmarker is not None:
+            self.bmarker.stop("build_matrix_spheres")
 
     def buffer_draw_lines(self) -> None:
+        if self.bmarker is not None:
+            self.bmarker.start("build_matrix_lines")
+        h, w = self.get_size()
         R, sizes, distances = self.get_projection()
         nbs = self.get_bonds()
 
@@ -225,25 +297,49 @@ class MolViewer(Widget):
         assert isinstance(xs, np.ndarray)
         assert isinstance(ys, np.ndarray)
 
-        for nb_idx in range(len(nbs)):
+        ## Preload coordinates
+        x1s, x2s = xs[nbs[:, 0]], xs[nbs[:, 1]]
+        y1s, y2s = ys[nbs[:, 0]], ys[nbs[:, 1]]
+
+        ## Generate within-bound mask
+        mask1 = (x1s < 0) | (x1s > w) | (y1s < 0) | (y1s > h)  # out of bound
+        mask2 = (x2s < 0) | (x2s > w) | (y2s < 0) | (y2s > h)  # out of bounds
+        mask = ~(mask1 & mask2)
+
+        ## Apply mask
+        x1s = x1s[mask]
+        x2s = x2s[mask]
+        y1s = y1s[mask]
+        y2s = y2s[mask]
+        nbs = nbs[mask]
+
+        ## Preload the rest
+        avg_distances = (distances[nbs[:, 0]] + distances[nbs[:, 1]]) / 2
+        ratios = sizes[nbs[:, 0]] / (sizes[nbs[:, 1]] + sizes[nbs[:, 0]])
+
+        ## Generate the lines and put them into the buffer
+        for nb_idx in range(len(x1s)):
             idx1, idx2 = nbs[nb_idx]
 
-            x1, x2 = xs[idx1], xs[idx2]
-            y1, y2 = ys[idx1], ys[idx2]
+            x1, x2 = x1s[nb_idx], x2s[nb_idx]
+            y1, y2 = y1s[nb_idx], y2s[nb_idx]
 
             # get the connecting line
             xline, yline = self.get_line(x1, y1, x2, y2)
             # taking the average distance as the "height" for the line to reduce buffer calls
             # This could lead to some visual artefacts but it's cheaper
-            distance = (distances[idx1] + distances[idx2]) / 2
+            distance = avg_distances[nb_idx]
 
             # separate the two colors
             # number of points in each color proportional to respective atom sizes
             n_points = len(xline)
-            ratio = sizes[idx1] / (sizes[idx1] + sizes[idx2])
+            ratio = ratios[nb_idx]
             n1 = int(n_points * ratio)
             self.draw_buffer(float(distance), idx1, xline[:n1], yline[:n1])
             self.draw_buffer(float(distance), idx2, xline[n1:], yline[n1:])
+
+        if self.bmarker is not None:
+            self.bmarker.stop("build_matrix_lines")
 
     def draw_buffer(
         self,
@@ -322,12 +418,18 @@ class MolViewer(Widget):
         positions = R[:, 1:] - self.offset
         if center and scaled:
             positions *= self.scale
-            h, w = self.size.height * 2, self.size.width
+            h, w = self.get_size()
             x_center, y_center = w / 2, h / 2
             positions[:, 0] += x_center
             positions[:, 1] += y_center
 
         return positions, self.mols_reader.get_radii(self.index), R[:, 0]
+
+    def get_size(self) -> Tuple[int, int]:
+        if self._headless:
+            return self._headless_size
+        else:
+            return self.size.height * 2, self.size.width
 
     def build(self) -> list[str]:
         lines = []
@@ -354,6 +456,26 @@ class MolViewer(Widget):
 
     def render(self) -> RenderableType:
         colors = jmol_colors[self.mols_reader.get_atomic_numbers(self.index)]
-        return HDRenderable(
-            self.build_matrix(), colors, background_color=self.background_color
+
+        ## BUILD MATRIX
+        if self.bmarker is not None:
+            self.bmarker.start("build_matrix")
+
+        matrix = self.build_matrix()
+
+        ## BUILD HDRENDERABLE
+        if self.bmarker is not None:
+            self.bmarker.stop("build_matrix")
+            self.bmarker.start("init_renderable")
+            # initing it should be cheap af, it's the __richconsole__ that matters
+
+        renderable = HDRenderable(
+            matrix,
+            colors,
+            background_color=self.background_color,
+            bmarker=self.bmarker,
         )
+        if self.bmarker is not None:
+            self.bmarker.stop("init_renderable")
+
+        return renderable

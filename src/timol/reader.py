@@ -22,6 +22,8 @@ class MoleculesReader:
             mols = [mols]
         self.molecules = mols
         self.ase = True
+        for x in mols:
+            x.pbc = False
 
     def get_n_molecules(self) -> int:
         return len(self.molecules)
