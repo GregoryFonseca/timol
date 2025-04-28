@@ -1,4 +1,5 @@
 import argparse
+import pathlib
 
 from importlib_resources import files
 
@@ -34,7 +35,19 @@ def parse_args() -> argparse.Namespace:
     return args
 
 
+def is_first_time_run():
+    package_dir = pathlib.Path(__file__).resolve().parent.parent  # src/timol
+    pycache_dir = package_dir / "__pycache__"
+
+    return pycache_dir.exists()
+
+
 def run_timol(args: argparse.Namespace):
+    if is_first_time_run():
+        print(
+            "Timol is running for the first time: startup time will be slow due to bytecode compilation."
+        )
+
     path = args.file
 
     if path == "test":
