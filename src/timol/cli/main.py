@@ -3,9 +3,6 @@ import pathlib
 
 from importlib_resources import files
 
-from timol.main import Timol
-from timol.reader import MoleculesReader
-
 
 def cli():
     args = parse_args()
@@ -55,6 +52,9 @@ def run_timol(args: argparse.Namespace):
 
     if path == "bigtest":
         path = files("timol").joinpath("R_hemo.xyz")
+
+    from timol.main import Timol
+    from timol.reader import MoleculesReader
 
     mr = MoleculesReader(path, index=args.index)
     app = Timol(mr, bmark=args.bmark)
