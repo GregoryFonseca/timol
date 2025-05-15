@@ -1,6 +1,6 @@
 [project]
 name = "timol"
-version = "1.2.2"
+version = "1.2.3"
 description = "3D Molecular viewer in the terminal"
 readme = "README.md"
 authors = [
@@ -10,10 +10,11 @@ requires-python = ">=3.9"
 dependencies = [
     "importlib-resources>=6.5.2",
     "numpy>=2.0.2",
-    "textual>=2.1.2",
+    "textual>=3.2.0",
     "ase>=3.24.0",
     "scikit-image>=0.24.0",
     "tqdm>=4.67.1",
+    "importlib_metadata>=8.7.0",
 ]
 license = "MIT"
 license-files = ["LICENSE"]

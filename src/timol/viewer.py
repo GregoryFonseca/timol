@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union
 
 import numpy as np
 import skimage.draw
@@ -221,7 +221,7 @@ class MolViewer(Widget):
 
     def get_pixel_visibilities(
         self, x: NDArray[np.int64], y: NDArray[np.int64]
-    ) -> NDArray[np.bool]:
+    ) -> NDArray[Any]:  # NDarray[bool] doesnt work for some reason
         h, w = self.get_size()
         return (x >= 0) & (x <= w - 1) & (y >= 0) & (y <= h - 1)
 
